@@ -5,8 +5,6 @@ from difflib import unified_diff
 
 # The URLs you want to track
 URLS = [
-    "https://finance.yahoo.com/",
-    "https://www.bbc.com/news",
     "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201",
     "https://www.bigw.com.au/product/pokemon-tcg-blooming-waters-premium-collection/p/6019662",
     "https://www.bigw.com.au/product/pokemon-tcg-legendary-warriors-premium-collection/p/6019661",
@@ -39,18 +37,26 @@ def send_discord_notification(url, message, diff):
         print("Error: Discord Webhook URL not set!")
         return
 
-    # If diff is too large, send a brief summary instead
-    if len(diff) > 2000:
-        diff = f"Changes are too large to display. The page has been updated: {url}"
-
+    # Limit the diff size to the first 500 characters
+    diff_preview = diff[:500]  # Change 500 to the number of characters you want to display
+    
     data = {
-        "content": f"{message} {url}\n\n{diff}"
+        "content": f"{message} {url}\n\n{diff_preview}"
     }
     response = requests.post(DISCORD_WEBHOOK_URL, json=data)
     if response.status_code == 204:
         print("Notification sent successfully.")
     else:
         print(f"Failed to send notification: {response.status_code}")
+
+def summarize_changes(diff):
+    """Summarize the diff output to avoid large content."""
+    lines = diff.splitlines()
+    change_summary = []
+    for line in lines[:10]:  # Limit to the first 10 lines of diff
+        if line.startswith('+') or line.startswith('-'):
+            change_summary.append(line)
+    return "\n".join(change_summary)
 
 def track_updates():
     """Track updates for the URLs and notify if content changes."""
@@ -75,7 +81,13 @@ def track_updates():
                     lineterm=''
                 )))
                 
-                send_discord_notification(url, "The tracked page has been updated!", diff)
+                # Summarize the changes
+                summary = summarize_changes(diff)
+                
+                # Send the notification with the summarized changes
+                send_discord_notification(url, "The tracked page has been updated!", summary)
+                
+                # Update the page content for the next comparison
                 LAST_PAGE_CONTENT[url] = current_page
         
         time.sleep(CHECK_INTERVAL)  # Wait 10 seconds before checking again
