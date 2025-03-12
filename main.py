@@ -88,6 +88,7 @@ def track_item_count():
             previous_item_count = current_item_count  # Update previous count
         else:
             print("Item count has not increased.")
+            send_discord_notification("The item count has not increased.")
         
 if __name__ == "__main__":
     track_item_count()
