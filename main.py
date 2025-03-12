@@ -60,10 +60,12 @@ def check_add_to_cart_or_preorder(page_content):
     # Check if 'Pre-order' button is available
     preorder_button = soup.find("button", {"data-di-id": "pdp--add-to-cart", "class": "Button variant-primary Button_Button__VboAj Button_variantPrimary___5_8N"})
     
-    if add_to_cart_button:
-        return "Add to Cart"
-    elif preorder_button:
+    # Check if it's a Pre-order button
+    if preorder_button and preorder_button.text.strip() == "Pre-order":
         return "Pre-order"
+    # Check if it's an Add to Cart button
+    elif add_to_cart_button:
+        return "Add to Cart"
     return None
 
 def track_add_to_cart_or_preorder():
