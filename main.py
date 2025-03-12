@@ -1,22 +1,14 @@
 import os
 import requests
 from bs4 import BeautifulSoup
-import time
 
-# The URL you want to track
+# The URL to track
 URL = "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201"
-
-# The interval between checks (in seconds)
-CHECK_INTERVAL = 10  # Check every 10 seconds
-
-# How long the script will run (in seconds)
-RUN_TIME = 10 * 60  # 10 minutes in seconds
 
 # Your Discord Webhook URL (using environment variable)
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-
-# Your Discord user ID
-DISCORD_USER_ID = "294034227081773056"  # Your personal Discord User ID
+# Your Discord user ID for pinging
+DISCORD_USER_ID = "<@294034227081773056>"  # Replace with your Discord user ID
 
 def fetch_page(url):
     """Fetch the page content."""
@@ -36,13 +28,9 @@ def send_discord_notification(message):
         print("Error: Discord Webhook URL not set!")
         return
 
-    # Include your Discord user ID to mention yourself
-    message_with_ping = f"<@{DISCORD_USER_ID}> {message}"
-
     data = {
-        "content": message_with_ping
+        "content": message
     }
-    
     response = requests.post(DISCORD_WEBHOOK_URL, json=data)
     if response.status_code == 204:
         print("Notification sent successfully.")
@@ -61,29 +49,45 @@ def extract_item_count(page_content):
             return int(item_count)
     return 0
 
-
 def track_item_count():
-    """Track the item count and send notifications if it changes."""
+    """Track item count and notify if the count increases."""
+    # Fetch the page content
     page_content = fetch_page(URL)
-    if page_content:
-        initial_item_count = extract_item_count(page_content)
-        print(f"Initial item count: {initial_item_count}")
-        send_discord_notification(f"Initial item count: {initial_item_count}")
+    if not page_content:
+        print("Error: Failed to fetch the page content.")
+        return
 
-        start_time = time.time()
-        while time.time() - start_time < RUN_TIME:
-            time.sleep(CHECK_INTERVAL)  # Wait before checking again
+    # Get the initial item count
+    initial_item_count = extract_item_count(page_content)
+    print(f"Initial item count: {initial_item_count}")
+    
+    # Send the initial count to Discord (no ping)
+    send_discord_notification(f"Initial item count: {initial_item_count} results found on the page.")
 
-            page_content = fetch_page(URL)
-            if page_content:
-                new_item_count = extract_item_count(page_content)
-                print(f"Checked item count: {new_item_count}")
+    # Track changes in item count
+    previous_item_count = initial_item_count
 
-                # Send notification only if item count has increased from the initial count
-                if new_item_count > initial_item_count:
-                    print(f"Item count increased to: {new_item_count}")
-                    send_discord_notification(f"Item count increased to: {new_item_count} items on the page!")
-                    initial_item_count = new_item_count  # Update the count
+    # You can adjust the check interval (e.g., every 60 seconds or based on your needs)
+    import time
+    while True:
+        time.sleep(60)  # Sleep for 1 minute before checking again
 
+        # Fetch the page content again
+        page_content = fetch_page(URL)
+        if not page_content:
+            print("Error: Failed to fetch the page content.")
+            continue
+
+        # Extract current item count
+        current_item_count = extract_item_count(page_content)
+        print(f"Current item count: {current_item_count}")
+
+        # If the item count increased, send a ping
+        if current_item_count > previous_item_count:
+            send_discord_notification(f"{DISCORD_USER_ID} The item count has increased! New count: {current_item_count} results.")
+            previous_item_count = current_item_count  # Update previous count
+        else:
+            print("Item count has not increased.")
+        
 if __name__ == "__main__":
     track_item_count()
