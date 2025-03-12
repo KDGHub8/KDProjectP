@@ -5,12 +5,13 @@ from difflib import unified_diff
 
 # The URLs you want to track
 URLS = [
+    "https://finance.yahoo.com/",
     "https://www.bbc.com/news",
-    "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201"
-    "https://www.bigw.com.au/product/pokemon-tcg-blooming-waters-premium-collection/p/6019662"
-    "https://www.bigw.com.au/product/pokemon-tcg-legendary-warriors-premium-collection/p/6019661"
-    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-prismatic-evolutions-super-premium-collection/p/6019663"
-    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-journey-together-three-booster-blister-assorted-/p/6013488"
+    "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201",
+    "https://www.bigw.com.au/product/pokemon-tcg-blooming-waters-premium-collection/p/6019662",
+    "https://www.bigw.com.au/product/pokemon-tcg-legendary-warriors-premium-collection/p/6019661",
+    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-prismatic-evolutions-super-premium-collection/p/6019663",
+    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-journey-together-three-booster-blister-assorted-/p/6013488",
     "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-journey-together-booster-display/p/6013603"
 ]
 
