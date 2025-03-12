@@ -1,11 +1,12 @@
-name: Scheduled Monitor
+name: Run Python Script
 
 on:
   schedule:
-    - cron: '55 * * * *'  # This will run the job at 55 minutes past every hour
+    - cron: '55 * * * *'  # Runs at 55 minutes past every hour
+  workflow_dispatch:  # Allows manual triggers
 
 jobs:
-  monitor:
+  run-script:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,8 +21,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install requests beautifulsoup4
 
-      - name: Run monitoring script
-        run: |
-          python main.py  # Replace with the actual script name
+      - name: Run the script
+        run: python main.py
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # Passing the secret
