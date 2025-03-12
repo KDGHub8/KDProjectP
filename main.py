@@ -39,18 +39,18 @@ def send_discord_notification(url, message, diff):
         print("Error: Discord Webhook URL not set!")
         return
 
-    # Only send notification if diff is not empty
-    if diff.strip():  # Only send if there is a meaningful diff
-        data = {
-            "content": f"{message} {url}\n\n{diff}"
-        }
-        response = requests.post(DISCORD_WEBHOOK_URL, json=data)
-        if response.status_code == 204:
-            print("Notification sent successfully.")
-        else:
-            print(f"Failed to send notification: {response.status_code}")
+    # If diff is too large, send a brief summary instead
+    if len(diff) > 2000:
+        diff = f"Changes are too large to display. The page has been updated: {url}"
+
+    data = {
+        "content": f"{message} {url}\n\n{diff}"
+    }
+    response = requests.post(DISCORD_WEBHOOK_URL, json=data)
+    if response.status_code == 204:
+        print("Notification sent successfully.")
     else:
-        print("No meaningful changes detected, no notification sent.")
+        print(f"Failed to send notification: {response.status_code}")
 
 def track_updates():
     """Track updates for the URLs and notify if content changes."""
@@ -75,12 +75,7 @@ def track_updates():
                     lineterm=''
                 )))
                 
-                # Ensure diff is not too large for Discord
-                if len(diff) > 2000:
-                    print("Diff too large to send.")
-                else:
-                    send_discord_notification(url, "The tracked page has been updated!", diff)
-                
+                send_discord_notification(url, "The tracked page has been updated!", diff)
                 LAST_PAGE_CONTENT[url] = current_page
         
         time.sleep(CHECK_INTERVAL)  # Wait 10 seconds before checking again
