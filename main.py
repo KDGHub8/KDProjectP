@@ -2,7 +2,7 @@ import os
 import requests
 import time
 from difflib import unified_diff
-
+print("Webhook URL: ", DISCORD_WEBHOOK_URL)
 # The URLs you want to track
 URLS = [
     "https://finance.yahoo.com/",
@@ -16,7 +16,7 @@ URLS = [
 ]
 
 # The interval between checks (in seconds)
-CHECK_INTERVAL = 10  # Check every 10 seconds
+CHECK_INTERVAL = 30  # Check every 10 seconds
 
 # How long the script will run (in seconds)
 RUN_TIME = 10 * 60  # 10 minutes in seconds
@@ -44,9 +44,10 @@ def send_discord_notification(url, message, diff):
     }
     response = requests.post(DISCORD_WEBHOOK_URL, json=data)
     if response.status_code == 204:
-        print("Notification sent successfully.")
+    print("Notification sent successfully.")
     else:
-        print(f"Failed to send notification: {response.status_code}")
+    print(f"Failed to send notification: {response.status_code}, {response.text}")
+
 
 def track_updates():
     """Track updates for the URLs and notify if content changes."""
