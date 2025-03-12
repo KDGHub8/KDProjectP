@@ -68,6 +68,8 @@ def track_item_count():
         initial_item_count = extract_item_count(page_content)
         if initial_item_count is not None:
             print(f"Initial item count: {initial_item_count}")
+            # Send the initial item count as a Discord notification
+            send_discord_notification(f"Initial item count: {initial_item_count} on {URL}")
         else:
             print("Item count not found at the start.")
             return  # Exit if the initial count can't be fetched
