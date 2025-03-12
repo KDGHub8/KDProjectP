@@ -2,7 +2,7 @@ name: Run Python Script
 
 on:
   schedule:
-    - cron: '55 * * * *'  # Runs at 55 minutes past every hour
+    - cron: '50 * * * *'  # Runs at 55 minutes past every hour
   workflow_dispatch:  # Allows manual triggers
 
 jobs:
