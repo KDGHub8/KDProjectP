@@ -2,7 +2,7 @@ import os
 import requests
 import time
 from difflib import unified_diff
-print("Webhook URL: ", DISCORD_WEBHOOK_URL)
+
 # The URLs you want to track
 URLS = [
     "https://finance.yahoo.com/",
@@ -16,7 +16,7 @@ URLS = [
 ]
 
 # The interval between checks (in seconds)
-CHECK_INTERVAL = 30  # Check every 10 seconds
+CHECK_INTERVAL = 10  # Check every 10 seconds
 
 # How long the script will run (in seconds)
 RUN_TIME = 10 * 60  # 10 minutes in seconds
@@ -39,15 +39,18 @@ def send_discord_notification(url, message, diff):
         print("Error: Discord Webhook URL not set!")
         return
 
-    data = {
-        "content": f"{message} {url}\n\n{diff}"
-    }
-    response = requests.post(DISCORD_WEBHOOK_URL, json=data)
-    if response.status_code == 204:
-    print("Notification sent successfully.")
+    # Only send notification if diff is not empty
+    if diff.strip():  # Only send if there is a meaningful diff
+        data = {
+            "content": f"{message} {url}\n\n{diff}"
+        }
+        response = requests.post(DISCORD_WEBHOOK_URL, json=data)
+        if response.status_code == 204:
+            print("Notification sent successfully.")
+        else:
+            print(f"Failed to send notification: {response.status_code}")
     else:
-    print(f"Failed to send notification: {response.status_code}, {response.text}")
-
+        print("No meaningful changes detected, no notification sent.")
 
 def track_updates():
     """Track updates for the URLs and notify if content changes."""
@@ -72,7 +75,12 @@ def track_updates():
                     lineterm=''
                 )))
                 
-                send_discord_notification(url, "The tracked page has been updated!", diff)
+                # Ensure diff is not too large for Discord
+                if len(diff) > 2000:
+                    print("Diff too large to send.")
+                else:
+                    send_discord_notification(url, "The tracked page has been updated!", diff)
+                
                 LAST_PAGE_CONTENT[url] = current_page
         
         time.sleep(CHECK_INTERVAL)  # Wait 10 seconds before checking again
