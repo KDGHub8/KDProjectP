@@ -1,6 +1,8 @@
 import os
 import requests
 from bs4 import BeautifulSoup
+import time
+import json
 
 # The URL to track
 URL = "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201"
@@ -9,6 +11,9 @@ URL = "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-tr
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 # Your Discord user ID for pinging
 DISCORD_USER_ID = "<@294034227081773056>"  # Replace with your Discord user ID
+
+# Path to store the last known item count between runs (persistent storage)
+LAST_ITEM_COUNT_FILE = "/tmp/last_item_count.json"
 
 def fetch_page(url):
     """Fetch the page content."""
@@ -49,46 +54,54 @@ def extract_item_count(page_content):
             return int(item_count)
     return 0
 
+def load_last_item_count():
+    """Load the last known item count from a file (if it exists)."""
+    if os.path.exists(LAST_ITEM_COUNT_FILE):
+        with open(LAST_ITEM_COUNT_FILE, 'r') as f:
+            return json.load(f)
+    return {"item_count": 0}  # Default to 0 if file doesn't exist
+
+def save_last_item_count(item_count):
+    """Save the current item count to a file."""
+    with open(LAST_ITEM_COUNT_FILE, 'w') as f:
+        json.dump({"item_count": item_count}, f)
+
 def track_item_count():
     """Track item count and notify if the count increases."""
-    # Fetch the page content
-    page_content = fetch_page(URL)
-    if not page_content:
-        print("Error: Failed to fetch the page content.")
-        return
+    # Record the start time for timeout
+    start_time = time.time()
 
-    # Get the initial item count
-    initial_item_count = extract_item_count(page_content)
-    print(f"Initial item count: {initial_item_count}")
-    
-    # Send the initial count to Discord (no ping)
-    send_discord_notification(f"Initial item count: {initial_item_count} results found on the page.")
-
-    # Track changes in item count
-    previous_item_count = initial_item_count
-
-    # You can adjust the check interval (e.g., every 30 seconds or based on your needs)
-    import time
+    # Loop with timeout check (10 minutes = 600 seconds)
     while True:
-        time.sleep(30)  # Sleep for 1 minute before checking again
+        # Check if the timeout of 10 minutes has been reached
+        if time.time() - start_time > 600:
+            print("Timeout reached (10 minutes). Exiting the script.")
+            break
 
-        # Fetch the page content again
+        # Fetch the page content
         page_content = fetch_page(URL)
         if not page_content:
             print("Error: Failed to fetch the page content.")
-            continue
+            return
 
-        # Extract current item count
+        # Extract the current item count
         current_item_count = extract_item_count(page_content)
         print(f"Current item count: {current_item_count}")
 
+        # Load the last known item count
+        last_item_count_data = load_last_item_count()
+        last_item_count = last_item_count_data.get("item_count", 0)
+
         # If the item count increased, send a ping
-        if current_item_count > previous_item_count:
+        if current_item_count > last_item_count:
             send_discord_notification(f"{DISCORD_USER_ID} The item count has increased! New count: {current_item_count} results.")
-            previous_item_count = current_item_count  # Update previous count
+            save_last_item_count(current_item_count)  # Update last known item count
         else:
-            print("Item count has not increased.")
-            send_discord_notification("The item count has not increased.")
-        
+            print("Item count has not increased")
+
+        # Optional sleep to prevent continuous requests within the 10 minutes
+        # Sleep for 30 seconds (you can adjust this interval)
+        time.sleep(30)
+
 if __name__ == "__main__":
     track_item_count()
