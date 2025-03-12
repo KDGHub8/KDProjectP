@@ -5,7 +5,8 @@ import time
 
 # The URLs you want to track
 URLS = [
-    "https://www.bigw.com.au/product/pok-mon-tcg-scarlet-violet-surging-sparks-blister-pack-assorted-/p/52352,"
+    "https://www.bigw.com.au/product/powerful-deluxe-hardcover-edition-by-lauren-roberts/p/6019808",
+    "https://www.bigw.com.au/product/pok-mon-tcg-scarlet-violet-surging-sparks-blister-pack-assorted-/p/52352",
     "https://www.bigw.com.au/product/pokemon-tcg-blooming-waters-premium-collection/p/6019662",
     "https://www.bigw.com.au/product/pokemon-tcg-legendary-warriors-premium-collection/p/6019661",
     "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-prismatic-evolutions-super-premium-collection/p/6019663",
@@ -49,19 +50,25 @@ def send_discord_notification(message):
     else:
         print(f"Failed to send notification: {response.status_code}")
 
-def check_add_to_cart_button(page_content):
-    """Check if the 'Add to Cart' button is available."""
+def check_add_to_cart_or_preorder(page_content):
+    """Check if the 'Add to Cart' or 'Pre-order' button is available."""
     soup = BeautifulSoup(page_content, "html.parser")
+    
+    # Check if 'Add to Cart' button is available
     add_to_cart_button = soup.find("button", {"data-di-id": "pdp--add-to-cart"})
     
-    # Check if the button exists
+    # Check if 'Pre-order' button is available
+    preorder_button = soup.find("button", {"data-di-id": "pdp--add-to-cart", "class": "Button variant-primary Button_Button__VboAj Button_variantPrimary___5_8N"})
+    
     if add_to_cart_button:
-        return True
-    return False
+        return "Add to Cart"
+    elif preorder_button:
+        return "Pre-order"
+    return None
 
-def track_add_to_cart():
-    """Track when 'Add to Cart' button becomes available on the product pages."""
-    initial_availability = {url: False for url in URLS}
+def track_add_to_cart_or_preorder():
+    """Track when 'Add to Cart' or 'Pre-order' button becomes available on the product pages."""
+    initial_availability = {url: None for url in URLS}
 
     # Run the tracking process for 10 minutes
     start_time = time.time()
@@ -69,16 +76,16 @@ def track_add_to_cart():
         for url in URLS:
             page_content = fetch_page(url)
             if page_content:
-                button_available = check_add_to_cart_button(page_content)
-                if button_available and not initial_availability[url]:
-                    print(f"'Add to Cart' is now available: {url}")
-                    send_discord_notification(f"'Add to Cart' is now available on {url}")
-                    initial_availability[url] = True
-                elif not button_available and initial_availability[url]:
-                    print(f"'Add to Cart' is no longer available: {url}")
-                    send_discord_notification(f"'Add to Cart' is no longer available on {url}")
-                    initial_availability[url] = False
+                button_status = check_add_to_cart_or_preorder(page_content)
+                if button_status and initial_availability[url] != button_status:
+                    print(f"'{button_status}' is now available: {url}")
+                    send_discord_notification(f"'{button_status}' is now available on {url}")
+                    initial_availability[url] = button_status
+                elif not button_status and initial_availability[url]:
+                    print(f"'{initial_availability[url]}' is no longer available: {url}")
+                    send_discord_notification(f"'{initial_availability[url]}' is no longer available on {url}")
+                    initial_availability[url] = None
         time.sleep(CHECK_INTERVAL)  # Wait 10 seconds before checking again
 
 if __name__ == "__main__":
-    track_add_to_cart()
+    track_add_to_cart_or_preorder()
