@@ -55,8 +55,12 @@ def extract_item_count(page_content):
     item_count_element = soup.find("div", {"id": "search-results-count"})
     if item_count_element:
         item_count = item_count_element.get_text(strip=True).split()[0]  # Extract number only
-        return int(item_count)
+        # Clean the string to remove any non-numeric characters
+        item_count = ''.join(filter(str.isdigit, item_count))
+        if item_count:
+            return int(item_count)
     return 0
+
 
 def track_item_count():
     """Track the item count and send notifications if it changes."""
