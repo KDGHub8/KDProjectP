@@ -1,6 +1,7 @@
 import os
 import requests
 import time
+from difflib import unified_diff
 
 # The URLs you want to track
 URLS = [
@@ -26,14 +27,14 @@ def fetch_page(url):
     response = requests.get(url, headers=headers)
     return response.text if response.status_code == 200 else None
 
-def send_discord_notification(url, message):
-    """Send a notification to Discord when page is updated."""
+def send_discord_notification(url, message, diff):
+    """Send a notification to Discord when page is updated with the changes."""
     if DISCORD_WEBHOOK_URL is None:
         print("Error: Discord Webhook URL not set!")
         return
 
     data = {
-        "content": f"{message} {url}"
+        "content": f"{message} {url}\n\n{diff}"
     }
     response = requests.post(DISCORD_WEBHOOK_URL, json=data)
     if response.status_code == 204:
@@ -54,8 +55,19 @@ def track_updates():
             current_page = fetch_page(url)
             if current_page and current_page != LAST_PAGE_CONTENT[url]:
                 print(f"Page updated: {url}")
-                send_discord_notification(url, "The tracked page has been updated!")
+                
+                # Calculate the diff (what has changed)
+                diff = "\n".join(list(unified_diff(
+                    LAST_PAGE_CONTENT[url].splitlines(),
+                    current_page.splitlines(),
+                    fromfile="old_content",
+                    tofile="new_content",
+                    lineterm=''
+                )))
+                
+                send_discord_notification(url, "The tracked page has been updated!", diff)
                 LAST_PAGE_CONTENT[url] = current_page
+        
         time.sleep(CHECK_INTERVAL)  # Wait 10 seconds before checking again
 
 if __name__ == "__main__":
