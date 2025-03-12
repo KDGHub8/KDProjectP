@@ -36,9 +36,10 @@ def extract_item_count(page_content):
     
     if result_count_element:
         result_text = result_count_element.get_text(strip=True)
-        # Extract the numeric value from the text
-        item_count = result_text.split()[0]  # Take the first part of the text (before 'results')
-        return int(item_count)
+        # Extract the numeric value from the text by removing non-numeric characters
+        item_count = ''.join(filter(str.isdigit, result_text))
+        if item_count:
+            return int(item_count)
     return None
 
 def send_discord_notification(message):
