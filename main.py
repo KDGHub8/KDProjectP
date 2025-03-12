@@ -1,20 +1,12 @@
-import os
 import requests
 from bs4 import BeautifulSoup
 import time
+import os
 
-# The URLs you want to track
-URLS = [
-    "https://www.bigw.com.au/product/powerful-deluxe-hardcover-edition-by-lauren-roberts/p/6019808",
-    "https://www.bigw.com.au/product/pok-mon-tcg-scarlet-violet-surging-sparks-blister-pack-assorted-/p/52352",
-    "https://www.bigw.com.au/product/pokemon-tcg-blooming-waters-premium-collection/p/6019662",
-    "https://www.bigw.com.au/product/pokemon-tcg-legendary-warriors-premium-collection/p/6019661",
-    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-prismatic-evolutions-super-premium-collection/p/6019663",
-    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-journey-together-three-booster-blister-assorted-/p/6013488",
-    "https://www.bigw.com.au/product/pokemon-tcg-scarlet-violet-journey-together-booster-display/p/6013603"
-]
+# The URL you want to track
+URL = "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201"
 
-# The interval between checks (in seconds)
+# Interval between checks (in seconds)
 CHECK_INTERVAL = 10  # Check every 10 seconds
 
 # How long the script will run (in seconds)
@@ -35,6 +27,20 @@ def fetch_page(url):
         print(f"Error fetching URL: {e}")
         return None
 
+def extract_item_count(page_content):
+    """Extract the item count from the search results."""
+    soup = BeautifulSoup(page_content, "html.parser")
+    
+    # Find the element containing the result count (e.g., '61 results')
+    result_count_element = soup.find("div", {"id": "search-results-count"})
+    
+    if result_count_element:
+        result_text = result_count_element.get_text(strip=True)
+        # Extract the numeric value from the text
+        item_count = result_text.split()[0]  # Take the first part of the text (before 'results')
+        return int(item_count)
+    return None
+
 def send_discord_notification(message):
     """Send a notification to Discord."""
     if DISCORD_WEBHOOK_URL is None:
@@ -50,44 +56,53 @@ def send_discord_notification(message):
     else:
         print(f"Failed to send notification: {response.status_code}")
 
-def check_add_to_cart_or_preorder(page_content):
-    """Check if the 'Add to Cart' or 'Pre-order' button is available."""
-    soup = BeautifulSoup(page_content, "html.parser")
-    
-    # Check if 'Add to Cart' button is available
-    add_to_cart_button = soup.find("button", {"data-di-id": "pdp--add-to-cart"})
-    
-    # Check if 'Pre-order' button is available
-    preorder_button = soup.find("button", {"data-di-id": "pdp--add-to-cart", "class": "Button variant-primary Button_Button__VboAj Button_variantPrimary___5_8N"})
-    
-    # Check if it's a Pre-order button
-    if preorder_button and preorder_button.text.strip() == "Pre-order":
-        return "Pre-order"
-    # Check if it's an Add to Cart button
-    elif add_to_cart_button:
-        return "Add to Cart"
-    return None
-
-def track_add_to_cart_or_preorder():
-    """Track when 'Add to Cart' or 'Pre-order' button becomes available on the product pages."""
-    initial_availability = {url: None for url in URLS}
-
-    # Run the tracking process for 10 minutes
+def track_item_count():
+    """Track the number of items on the page."""
+    previous_item_count = None
     start_time = time.time()
+
+    # Initial item count at the start
+    page_content = fetch_page(URL)
+    if page_content:
+        initial_item_count = extract_item_count(page_content)
+        if initial_item_count is not None:
+            print(f"Initial item count: {initial_item_count}")
+        else:
+            print("Item count not found at the start.")
+            return  # Exit if the initial count can't be fetched
+    else:
+        print("Failed to fetch page content at the start.")
+        return  # Exit if the page couldn't be fetched
+    
     while time.time() - start_time < RUN_TIME:
-        for url in URLS:
-            page_content = fetch_page(url)
-            if page_content:
-                button_status = check_add_to_cart_or_preorder(page_content)
-                if button_status and initial_availability[url] != button_status:
-                    print(f"'{button_status}' is now available: {url}")
-                    send_discord_notification(f"'{button_status}' is now available on {url}")
-                    initial_availability[url] = button_status
-                elif not button_status and initial_availability[url]:
-                    print(f"'{initial_availability[url]}' is no longer available: {url}")
-                    send_discord_notification(f"'{initial_availability[url]}' is no longer available on {url}")
-                    initial_availability[url] = None
-        time.sleep(CHECK_INTERVAL)  # Wait 10 seconds before checking again
+        page_content = fetch_page(URL)
+        if page_content:
+            item_count = extract_item_count(page_content)
+            if item_count:
+                print(f"Current item count: {item_count}")
+                
+                # Send a notification only if the item count has increased
+                if previous_item_count is None:
+                    previous_item_count = item_count
+                elif item_count > previous_item_count:
+                    message = f"The number of items has increased to {item_count} on {URL}!"
+                    print(message)
+                    send_discord_notification(message)
+                    previous_item_count = item_count
+            else:
+                print("Item count not found.")
+        
+        time.sleep(CHECK_INTERVAL)  # Wait before checking again
+    
+    # Final item count at the end
+    if page_content:
+        final_item_count = extract_item_count(page_content)
+        if final_item_count is not None:
+            print(f"Final item count: {final_item_count}")
+        else:
+            print("Item count not found at the end.")
+    else:
+        print("Failed to fetch page content at the end.")
 
 if __name__ == "__main__":
-    track_add_to_cart_or_preorder()
+    track_item_count()
