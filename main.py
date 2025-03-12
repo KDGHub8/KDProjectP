@@ -1,12 +1,12 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import time
-import os
 
 # The URL you want to track
 URL = "https://www.bigw.com.au/toys/board-games-puzzles/trading-cards/pokemon-trading-cards/c/681510201"
 
-# Interval between checks (in seconds)
+# The interval between checks (in seconds)
 CHECK_INTERVAL = 10  # Check every 10 seconds
 
 # How long the script will run (in seconds)
@@ -14,6 +14,9 @@ RUN_TIME = 10 * 60  # 10 minutes in seconds
 
 # Your Discord Webhook URL (using environment variable)
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+
+# Your Discord user ID
+DISCORD_USER_ID = "294034227081773056"  # Your personal Discord User ID
 
 def fetch_page(url):
     """Fetch the page content."""
@@ -27,85 +30,56 @@ def fetch_page(url):
         print(f"Error fetching URL: {e}")
         return None
 
-def extract_item_count(page_content):
-    """Extract the item count from the search results."""
-    soup = BeautifulSoup(page_content, "html.parser")
-    
-    # Find the element containing the result count (e.g., '61 results')
-    result_count_element = soup.find("div", {"id": "search-results-count"})
-    
-    if result_count_element:
-        result_text = result_count_element.get_text(strip=True)
-        # Extract the numeric value from the text by removing non-numeric characters
-        item_count = ''.join(filter(str.isdigit, result_text))
-        if item_count:
-            return int(item_count)
-    return None
-
 def send_discord_notification(message):
     """Send a notification to Discord."""
     if DISCORD_WEBHOOK_URL is None:
         print("Error: Discord Webhook URL not set!")
         return
 
+    # Include your Discord user ID to mention yourself
+    message_with_ping = f"<@{DISCORD_USER_ID}> {message}"
+
     data = {
-        "content": message
+        "content": message_with_ping
     }
+    
     response = requests.post(DISCORD_WEBHOOK_URL, json=data)
     if response.status_code == 204:
         print("Notification sent successfully.")
     else:
         print(f"Failed to send notification: {response.status_code}")
 
-def track_item_count():
-    """Track the number of items on the page."""
-    previous_item_count = None
-    start_time = time.time()
+def extract_item_count(page_content):
+    """Extract the item count from the page."""
+    soup = BeautifulSoup(page_content, "html.parser")
+    item_count_element = soup.find("div", {"id": "search-results-count"})
+    if item_count_element:
+        item_count = item_count_element.get_text(strip=True).split()[0]  # Extract number only
+        return int(item_count)
+    return 0
 
-    # Initial item count at the start
+def track_item_count():
+    """Track the item count and send notifications if it changes."""
     page_content = fetch_page(URL)
     if page_content:
         initial_item_count = extract_item_count(page_content)
-        if initial_item_count is not None:
-            print(f"Initial item count: {initial_item_count}")
-            # Send the initial item count as a Discord notification
-            send_discord_notification(f"Initial item count: {initial_item_count} on {URL}")
-        else:
-            print("Item count not found at the start.")
-            return  # Exit if the initial count can't be fetched
-    else:
-        print("Failed to fetch page content at the start.")
-        return  # Exit if the page couldn't be fetched
-    
-    while time.time() - start_time < RUN_TIME:
-        page_content = fetch_page(URL)
-        if page_content:
-            item_count = extract_item_count(page_content)
-            if item_count:
-                print(f"Current item count: {item_count}")
-                
-                # Send a notification only if the item count has increased
-                if previous_item_count is None:
-                    previous_item_count = item_count
-                elif item_count > previous_item_count:
-                    message = f"The number of items has increased to {item_count} on {URL}!"
-                    print(message)
-                    send_discord_notification(message)
-                    previous_item_count = item_count
-            else:
-                print("Item count not found.")
-        
-        time.sleep(CHECK_INTERVAL)  # Wait before checking again
-    
-    # Final item count at the end
-    if page_content:
-        final_item_count = extract_item_count(page_content)
-        if final_item_count is not None:
-            print(f"Final item count: {final_item_count}")
-        else:
-            print("Item count not found at the end.")
-    else:
-        print("Failed to fetch page content at the end.")
+        print(f"Initial item count: {initial_item_count}")
+        send_discord_notification(f"Initial item count: {initial_item_count}")
+
+        start_time = time.time()
+        while time.time() - start_time < RUN_TIME:
+            time.sleep(CHECK_INTERVAL)  # Wait before checking again
+
+            page_content = fetch_page(URL)
+            if page_content:
+                new_item_count = extract_item_count(page_content)
+                print(f"Checked item count: {new_item_count}")
+
+                # Send notification only if item count has increased from the initial count
+                if new_item_count > initial_item_count:
+                    print(f"Item count increased to: {new_item_count}")
+                    send_discord_notification(f"Item count increased to: {new_item_count} items on the page!")
+                    initial_item_count = new_item_count  # Update the count
 
 if __name__ == "__main__":
     track_item_count()
