@@ -67,10 +67,10 @@ def track_item_count():
     # Track changes in item count
     previous_item_count = initial_item_count
 
-    # You can adjust the check interval (e.g., every 60 seconds or based on your needs)
+    # You can adjust the check interval (e.g., every 30 seconds or based on your needs)
     import time
     while True:
-        time.sleep(60)  # Sleep for 1 minute before checking again
+        time.sleep(30)  # Sleep for 1 minute before checking again
 
         # Fetch the page content again
         page_content = fetch_page(URL)
