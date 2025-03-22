@@ -1,6 +1,6 @@
 name: Run Python Script
 
-on:
+// on:
   schedule:
     - cron: '50 * * * *'  # Runs at 55 minutes past every hour
   workflow_dispatch:  # Allows manual triggers
